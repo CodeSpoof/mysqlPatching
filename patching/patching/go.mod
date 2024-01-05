@@ -1,4 +1,4 @@
-module github.com/CodeSpoof/mysqlPatching/patching
+module github.com/CodeSpoof/mysqlPatching/patching/patching
 
 go 1.21
 

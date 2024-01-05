@@ -76,7 +76,7 @@ func (text *Text) Accept(proposal Proposal, db database.DbLike) error {
 	}
 	var err error
 	var p Patch
-	text.Content, p, err = patchString(text.Content, proposal)
+	text.Content, p, err = PatchString(text.Content, proposal)
 	p.Owner = proposal.Owner
 	p.Message = proposal.Message
 	if err != nil {
@@ -110,7 +110,7 @@ func (text *Text) Accept(proposal Proposal, db database.DbLike) error {
 }
 
 func (text *Text) Propose(newText string, message string, owner int64, db database.DbLike) (*Proposal, error) {
-	p := generateProposal(text.Content, newText)
+	p := GenerateProposal(text.Content, newText)
 	result, err := db.Exec("INSERT INTO patching_proposals (text_uuid, last_patch, patch, owner, message) VALUES (?, ?, ?, ?, ?)", text.Uuid, text.LastPatchId, p.Patch, owner, message)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (text *Text) GetOldVersion(lastPatch Patch, db database.DbLike) (*Text, err
 		if patch.Id == lastPatch.Id {
 			break
 		}
-		ret, _, err = patchString(text.Content, Proposal{Patch: patch.ReversePatch})
+		ret, _, err = PatchString(text.Content, Proposal{Patch: patch.ReversePatch})
 		if err != nil {
 			return &Text{}, err
 		}
@@ -213,12 +213,12 @@ func (text *Text) UpdateProposal(proposal Proposal, db database.DbLike) (*Propos
 	if err != nil {
 		return nil, err
 	}
-	myChanges, err := getPatchChanges(proposal, len(old.Content))
+	myChanges, err := GetPatchChanges(proposal, len(old.Content))
 	if err != nil {
 		return nil, err
 	}
 	for i++; i < len(patches); i++ {
-		realChanges, err := getPatchChanges(Proposal{Patch: patches[i].Patch}, len(old.Content))
+		realChanges, err := GetPatchChanges(Proposal{Patch: patches[i].Patch}, len(old.Content))
 		if err != nil {
 			return nil, err
 		}
@@ -226,30 +226,30 @@ func (text *Text) UpdateProposal(proposal Proposal, db database.DbLike) (*Propos
 		procUntil := 0
 		for _, realChange := range realChanges {
 			for i2, myChange := range myChanges[procUntil:] {
-				if myChange.fromIndex > realChange.toIndex {
+				if myChange.FromIndex > realChange.ToIndex {
 					break
 				}
-				if realChange.fromIndex > myChange.toIndex {
-					myChanges[i2+procUntil].fromIndex += offset
-					myChanges[i2+procUntil].toIndex += offset
+				if realChange.FromIndex > myChange.ToIndex {
+					myChanges[i2+procUntil].FromIndex += offset
+					myChanges[i2+procUntil].ToIndex += offset
 					procUntil++
 					continue
 				}
 				return nil, PatchIncompatibleError
 			}
-			offset += realChange.lengthChange
+			offset += realChange.LengthChange
 		}
 		for i3 := range myChanges[procUntil:] {
-			myChanges[i3+procUntil].fromIndex += offset
-			myChanges[i3+procUntil].toIndex += offset
+			myChanges[i3+procUntil].FromIndex += offset
+			myChanges[i3+procUntil].ToIndex += offset
 		}
-		old.Content, _, err = patchString(old.Content, Proposal{Patch: patches[i].Patch})
+		old.Content, _, err = PatchString(old.Content, Proposal{Patch: patches[i].Patch})
 		if err != nil {
 			return nil, err
 		}
 		old.LastPatchId = patches[i].Id
 	}
-	p := generateProposal(text.Content, applyChanges(text.Content, myChanges))
+	p := GenerateProposal(text.Content, ApplyChanges(text.Content, myChanges))
 	p.Id = proposal.Id
 	p.LastPatchId = text.LastPatchId
 	p.Owner = proposal.Owner

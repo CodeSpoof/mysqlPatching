@@ -6,21 +6,21 @@ import (
 	"strconv"
 )
 
-type patchChange struct {
-	fromIndex    int
-	toIndex      int
-	lengthChange int
-	text         string
+type PatchChange struct {
+	FromIndex    int
+	ToIndex      int
+	LengthChange int
+	Text         string
 }
 
 var PatchSyntaxError = fmt.Errorf("patch syntax error")
 var OutOfPatchBoundsError = fmt.Errorf("patch out of patch bounds")
 var OutOfTextBoundsError = fmt.Errorf("patch out of text bounds")
 
-func getPatchChanges(proposal Proposal, length int) ([]patchChange, error) {
+func GetPatchChanges(proposal Proposal, length int) ([]PatchChange, error) {
 	pindex := 0
 	tindex := 0
-	var ret []patchChange
+	var ret []PatchChange
 	for pindex < len(proposal.Patch) {
 		match := re.FindStringSubmatch(proposal.Patch[pindex:])
 		if match == nil {
@@ -37,11 +37,11 @@ func getPatchChanges(proposal Proposal, length int) ([]patchChange, error) {
 			if pindex+l > len(proposal.Patch) {
 				return nil, OutOfPatchBoundsError
 			}
-			ret = append(ret, patchChange{
-				fromIndex:    tindex,
-				toIndex:      tindex - 1,
-				lengthChange: l,
-				text:         proposal.Patch[pindex : pindex+l],
+			ret = append(ret, PatchChange{
+				FromIndex:    tindex,
+				ToIndex:      tindex - 1,
+				LengthChange: l,
+				Text:         proposal.Patch[pindex : pindex+l],
 			})
 
 			pindex += l
@@ -55,11 +55,11 @@ func getPatchChanges(proposal Proposal, length int) ([]patchChange, error) {
 			if tindex+l > length {
 				return nil, OutOfTextBoundsError
 			}
-			ret = append(ret, patchChange{
-				fromIndex:    tindex,
-				toIndex:      tindex + l - 1,
-				lengthChange: -l,
-				text:         "",
+			ret = append(ret, PatchChange{
+				FromIndex:    tindex,
+				ToIndex:      tindex + l - 1,
+				LengthChange: -l,
+				Text:         "",
 			})
 			tindex += l
 		}
@@ -67,32 +67,32 @@ func getPatchChanges(proposal Proposal, length int) ([]patchChange, error) {
 	return ret, nil
 }
 
-func applyChanges(text string, changes []patchChange) string {
+func ApplyChanges(text string, changes []PatchChange) string {
 	ret := text
 	offset := 0
 
 	for _, change := range changes {
-		ret = ret[:change.fromIndex+offset] + change.text + ret[change.toIndex+1+offset:]
-		offset += change.lengthChange
+		ret = ret[:change.FromIndex+offset] + change.Text + ret[change.ToIndex+1+offset:]
+		offset += change.LengthChange
 	}
 	return ret
 }
 
-func patchString(text string, proposal Proposal) (string, Patch, error) {
-	changes, err := getPatchChanges(proposal, len(text))
+func PatchString(text string, proposal Proposal) (string, Patch, error) {
+	changes, err := GetPatchChanges(proposal, len(text))
 	if err != nil {
 		return "", Patch{}, err
 	}
 
-	ret := applyChanges(text, changes)
+	ret := ApplyChanges(text, changes)
 
 	return ret, Patch{
 		Patch:        proposal.Patch,
-		ReversePatch: generateProposal(ret, text).Patch,
+		ReversePatch: GenerateProposal(ret, text).Patch,
 	}, nil
 }
 
-func generateProposal(old, new string) Proposal {
+func GenerateProposal(old, new string) Proposal {
 	ret := ""
 	dmp := diffmatchpatch.New()
 
